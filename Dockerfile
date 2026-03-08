@@ -12,6 +12,7 @@ COPY app/ ./app/
 # Copy model artifacts and data
 COPY model/ ./model/
 COPY data/zipcode_demographics.csv ./data/zipcode_demographics.csv
+COPY data/future_unseen_examples.csv ./data/future_unseen_examples.csv
 
 # Run as non-root user (security best practice)
 RUN useradd --create-home appuser

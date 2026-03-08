@@ -14,6 +14,7 @@ from typing import Optional
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -27,6 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "model" / "model.pkl"
 FEATURES_PATH = BASE_DIR / "model" / "model_features.json"
 DEMOGRAPHICS_PATH = BASE_DIR / "data" / "zipcode_demographics.csv"
+UNSEEN_EXAMPLES_PATH = BASE_DIR / "data" / "future_unseen_examples.csv"
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -153,6 +155,15 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
+# Metrics middleware (must be registered before endpoints)
+# ---------------------------------------------------------------------------
+from app.metrics import metrics_middleware, store  # noqa: E402
+
+app.middleware("http")(metrics_middleware)
+
+DASHBOARD_HTML_PATH = Path(__file__).resolve().parent / "templates" / "dashboard.html"
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -247,3 +258,22 @@ async def health():
     """Health check endpoint for container orchestration and load balancer probes."""
     model_loaded = hasattr(app.state, "model") and app.state.model is not None
     return {"status": "healthy", "model_loaded": model_loaded}
+
+
+@app.get("/metrics")
+async def metrics():
+    """Return current API metrics as JSON."""
+    return store.snapshot()
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard():
+    """Serve the monitoring dashboard."""
+    return HTMLResponse(content=DASHBOARD_HTML_PATH.read_text())
+
+
+@app.get("/test-data")
+async def test_data():
+    """Return future_unseen_examples.csv rows as JSON for the stress test panel."""
+    df = pd.read_csv(UNSEEN_EXAMPLES_PATH, dtype={"zipcode": str})
+    return df.to_dict(orient="records")

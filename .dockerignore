@@ -8,10 +8,13 @@ __pycache__/
 .env
 data/kc_house_data.csv
 data/kc_house_data_sample_70pct.csv
-data/future_unseen_examples.csv
+# data/future_unseen_examples.csv  # needed for stress test
 PLAN.md
 FLOW.md
 PRINCIPLES.md
 CLAUDE.md
 README.md
 *.png
+.agent/
+.claude/
+dashboard.html
