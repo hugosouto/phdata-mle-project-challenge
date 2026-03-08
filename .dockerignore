@@ -1,0 +1,17 @@
+.git/
+notebook/
+context/
+_bmad/
+_bmad-output/
+__pycache__/
+*.pyc
+.env
+data/kc_house_data.csv
+data/kc_house_data_sample_70pct.csv
+data/future_unseen_examples.csv
+PLAN.md
+FLOW.md
+PRINCIPLES.md
+CLAUDE.md
+README.md
+*.png

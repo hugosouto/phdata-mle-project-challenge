@@ -31,18 +31,41 @@ _Brainstorming covered strategic decisions. Full BMAD planning workflow is overk
 
 ### 3. Quick Spec (QS) — `/bmad-bmm-quick-spec`
 - **Purpose:** Implementation-ready spec for minimum viable delivery
-- **Status:** pending
-- **Scope:** FastAPI + Docker + test script + model evaluation + model improvement
+- **Status:** done
+- **Output:** `_bmad-output/implementation-artifacts/tech-spec-sound-realty-api.md`
+- **Scope:** FastAPI + Docker + test script (6 tasks, 8 ACs, 6 files)
+- **Reviews completed:**
+  - Party Mode: 4 improvements (path resolution, fail-fast startup, zipcode dtype, edge case test)
+  - Adversarial Review: 13 findings, 7 fixes applied (NaN flow, negative price guard, test assertions, requests out of prod, logging, non-root Docker, security notes)
 
 ### 4. Quick Dev (QD) — `/bmad-bmm-quick-dev`
 - **Purpose:** Implement the quick spec
+- **Status:** done
+- **Output:** 6 files created (`requirements.txt`, `app/__init__.py`, `app/main.py`, `Dockerfile`, `.dockerignore`, `test_api.py`)
+- **Test results:** 7/7 checks passed (health, 5 predictions, edge case)
+- **ACs verified:** 7/8 (AC 7 Docker build pending manual verification)
+- **Note:** Fixed `str | None` → `Optional[str]` for Python 3.9 compatibility
+
+## Phase 3 — Core Deliverables (Model)
+
+### 5. Model Evaluation
+- **Purpose:** Assess generalization, overfitting/underfitting of the provided KNN baseline
 - **Status:** pending
+- **Deliverable:** Evaluation notebook/script with metrics (R², RMSE, MAE), learning curves, residual analysis
+- **Key questions:** Does the model generalize? Is it overfitting (KNN with k=5 on 21K rows)? Where does it fail?
 
-## Phase 3 — Wow Factor (If Time Allows)
+### 6. Model Improvement
+- **Purpose:** Apply basic ML principles to improve on the baseline (not a Kaggle competition — 80% solution)
+- **Status:** pending
+- **Approach:** Traditional ML — feature engineering, algorithm selection, hyperparameter tuning
+- **Candidates:** Add ignored features (grade, waterfront, yr_built, lat/long), try Ridge/Lasso/RandomForest/GradientBoosting, cross-validation
+- **Output:** Updated `model/model.pkl` + before/after comparison
 
-### 5. Wow factor enhancements (ranked by impact/effort)
-- [ ] Bug discovery mention in presentation (0 min)
-- [ ] Sound Realty branding in API response (5 min)
+## Phase 4 — Wow Factor (If Time Allows)
+
+### 7. Wow factor enhancements (ranked by impact/effort)
+- [x] Bug discovery mention in presentation (0 min) — `create_model.py` line 14: `DEMOGRAPHICS_PATH` points to wrong file
+- [x] Sound Realty branding in API response (5 min) — `"provider": "Sound Realty AI"` in every response
 - [ ] Before/After model comparison visual (30 min)
 - [ ] SHAP waterfall for business storytelling (1-2 hrs)
 - [ ] Live API demo with curl in presentation (0 min)
@@ -52,9 +75,9 @@ _Brainstorming covered strategic decisions. Full BMAD planning workflow is overk
 - [ ] Chatbot teaser slide with market data (slides only)
 - [ ] EPA Smart Location Database enrichment (1-3 hrs)
 
-## Phase 4 — Presentation
+## Phase 5 — Presentation
 
-### 6. Build presentation
+### 8. Build presentation
 - **Status:** pending
 - **Format:** Business half (15 min) + Technical half (15 min)
-- **Key assets:** Domain research, SHAP plots, live demo, architecture diagram, chatbot teaser
+- **Key assets:** Domain research, model evaluation results, before/after metrics, SHAP plots, live demo, architecture diagram, chatbot teaser
