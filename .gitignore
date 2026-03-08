@@ -1,2 +1,8 @@
 model/*
 *.pyc
+context/
+.claude
+.github
+.agent
+_bmad*
+CLAUDE.md
