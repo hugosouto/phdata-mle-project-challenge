@@ -35,7 +35,7 @@
   .progress-fill.yellow { background: var(--yellow); }
 
   /* Phase cards */
-  .phases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .phases { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
   .phase { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; }
   .phase.active { border-color: var(--blue); }
   .phase.done { border-color: var(--green); }
@@ -121,12 +121,18 @@
   <div class="phase active">
     <div class="phase-dot active"></div>
     <div class="phase-num">Phase 3</div>
-    <div class="phase-name">Wow Factor</div>
-    <div class="phase-status active">Ready to start</div>
+    <div class="phase-name">Model</div>
+    <div class="phase-status active">Evaluation + Improvement</div>
   </div>
   <div class="phase">
     <div class="phase-dot pending"></div>
     <div class="phase-num">Phase 4</div>
+    <div class="phase-name">Wow Factor</div>
+    <div class="phase-status pending">If time allows</div>
+  </div>
+  <div class="phase">
+    <div class="phase-dot pending"></div>
+    <div class="phase-num">Phase 5</div>
     <div class="phase-name">Presentation</div>
     <div class="phase-status pending">Business + Technical</div>
   </div>
@@ -207,8 +213,8 @@
     <div class="task-text done">AC 6: GET /docs renders OpenAPI documentation</div>
   </div>
   <div class="task">
-    <div class="task-check active"></div>
-    <div class="task-text">AC 7: Docker container starts and serves on port 8000</div>
+    <div class="task-check done">✓</div>
+    <div class="task-text done">AC 7: Docker container starts and serves on port 8000</div>
   </div>
   <div class="task">
     <div class="task-check done">✓</div>

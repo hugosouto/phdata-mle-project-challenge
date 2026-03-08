@@ -6,3 +6,4 @@ context/
 .agent
 _bmad*
 CLAUDE.md
+/worktrees/
