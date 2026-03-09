@@ -1,5 +1,6 @@
 model/*
 *.pyc
+__pycache__/
 context/
 .claude
 .github
@@ -7,3 +8,15 @@ context/
 _bmad*
 CLAUDE.md
 /worktrees/
+
+# Notebook outputs
+.ipynb_checkpoints/
+
+# Generated images
+*.png
+
+# Model artifacts
+*.pkl
+
+# Merged datasets (generated)
+kc_house_merged_*.csv
