@@ -224,12 +224,51 @@ FastAPI auto-generates interactive docs at `http://localhost:8000/docs`. You can
 
 ---
 
+## Monitoring Dashboard
+
+The API includes a built-in monitoring dashboard at `http://localhost:8000/dashboard`.
+
+### Features
+
+- **Real-time metrics** — request count, error rate, average latency, and P95 latency
+- **Live charts** — latency and request volume over time (Chart.js)
+- **Stress test panel** — fire concurrent prediction requests using real data from `future_unseen_examples.csv` and watch metrics update live
+
+### Endpoints
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /dashboard` | Interactive monitoring UI |
+| `GET /metrics` | Raw metrics as JSON (for programmatic consumption) |
+| `GET /test-data` | Returns unseen example rows as JSON (used by the stress test panel) |
+
+### Metrics JSON
+
+`GET /metrics` returns a snapshot like:
+
+```json
+{
+  "total_requests": 142,
+  "total_errors": 1,
+  "error_rate": 0.007,
+  "avg_latency_ms": 12.4,
+  "p95_latency_ms": 28.1
+}
+```
+
+> **Note:** Metrics are held in-memory and reset on restart. The `/dashboard`, `/metrics`, `/docs`, and `/test-data` routes are excluded from metric tracking.
+
+---
+
 ## Project Structure
 
 ```
 .
 ├── app/
-│   └── main.py              # FastAPI application
+│   ├── main.py              # FastAPI application
+│   ├── metrics.py           # In-memory metrics store & middleware
+│   └── templates/
+│       └── dashboard.html   # Monitoring dashboard UI
 ├── data/
 │   ├── kc_house_data.csv     # Training data (21,613 home sales)
 │   ├── zipcode_demographics.csv  # US Census demographics per zipcode
