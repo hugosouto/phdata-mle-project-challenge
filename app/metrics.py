@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 # Paths to exclude from metrics recording (avoid self-referential noise)
-_EXCLUDED_PATHS = {"/metrics", "/dashboard", "/docs", "/openapi.json", "/redoc", "/test-data"}
+_EXCLUDED_PATHS = {"/metrics", "/metrics/reset", "/monitoring", "/docs", "/openapi.json", "/redoc", "/test-data"}
 
 
 class MetricsStore:
@@ -29,6 +29,7 @@ class MetricsStore:
         self.total_latency_ms = 0.0
         self.status_codes = {}
         self.endpoint_counts = {}
+        self.endpoint_latency_total = {}
         self.request_log = collections.deque(maxlen=history_size)
         self.price_history = collections.deque(maxlen=price_history_size)
 
@@ -49,6 +50,7 @@ class MetricsStore:
             key = str(status_code)
             self.status_codes[key] = self.status_codes.get(key, 0) + 1
             self.endpoint_counts[path] = self.endpoint_counts.get(path, 0) + 1
+            self.endpoint_latency_total[path] = self.endpoint_latency_total.get(path, 0.0) + latency_ms
 
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -62,6 +64,18 @@ class MetricsStore:
                 self.price_history.append(predicted_price)
 
             self.request_log.append(entry)
+
+    def reset(self) -> None:
+        with self._lock:
+            self.start_time = time.time()
+            self.total_requests = 0
+            self.total_errors = 0
+            self.total_latency_ms = 0.0
+            self.status_codes = {}
+            self.endpoint_counts = {}
+            self.endpoint_latency_total = {}
+            self.request_log.clear()
+            self.price_history.clear()
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -83,6 +97,10 @@ class MetricsStore:
                 "error_rate_pct": error_rate,
                 "status_codes": dict(self.status_codes),
                 "endpoint_counts": dict(self.endpoint_counts),
+                "endpoint_avg_latency": {
+                    ep: round(self.endpoint_latency_total[ep] / self.endpoint_counts[ep], 2)
+                    for ep in self.endpoint_counts
+                },
                 "price_history": list(self.price_history),
                 "recent_requests": list(self.request_log)[-50:],
             }
@@ -103,8 +121,8 @@ async def metrics_middleware(request: Request, call_next) -> Response:
 
     predicted_price = None
 
-    # Extract predicted_price from /predict responses
-    if request.url.path == "/predict" and request.method == "POST" and response.status_code == 200:
+    # Extract predicted_price from /predict/* responses
+    if request.url.path.startswith("/predict/") and request.method == "POST" and response.status_code == 200:
         body_bytes = b""
         async for chunk in response.body_iterator:
             body_bytes += chunk

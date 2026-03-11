@@ -1,8 +1,8 @@
 ![phData Logo](phData.png "phData Logo")
 
-# Sound Realty — Housing Price Prediction API
+# Sound Realty — Enhanced Price Prediction API
 
-A REST API that serves housing price predictions for the Seattle metro area, built for the phData MLE candidate project.
+An enhanced REST API serving housing price predictions for the Seattle metro area, featuring four inference endpoints, a monitoring dashboard, and a model retraining module.
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ A REST API that serves housing price predictions for the Seattle metro area, bui
 - [Docker](https://docs.docker.com/get-started/) installed
 - Or: Python 3.9 with [Conda](https://docs.conda.io/en/latest/)
 
-### 1. Train the Model
+### 1. Train the Models
 
 ```sh
 conda env create -f conda_environment.yml
@@ -19,15 +19,18 @@ conda activate housing
 python create_model.py
 ```
 
-This outputs `model/model.pkl` and `model/model_features.json`.
+This outputs three models:
+- `model/basic_model.pkl` — KNN (7 house features + demographics, R² ≈ 0.73)
+- `model/enhanced_model.pkl` — LightGBM (10 best features + demographics, R² ≈ 0.87)
+- `model/optimized_model.pkl` — LightGBM (10 best features only, no demographics, R² ≈ 0.87)
 
 ### 2. Run the API
 
 **With Docker (recommended):**
 
 ```sh
-docker build -t sound-realty-api .
-docker run -p 8000:8000 sound-realty-api
+docker build -t sound-realty-enhanced .
+docker run -p 8000:8000 sound-realty-enhanced
 ```
 
 **Without Docker:**
@@ -37,226 +40,163 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-The API is now available at `http://localhost:8000`.
-
-### 3. Verify It's Running
-
-Open `http://localhost:8000/health` in your browser or run:
-
-```sh
-curl http://localhost:8000/health
-```
-
-Expected response:
-
-```json
-{ "status": "healthy", "model_loaded": true }
-```
+The API is now available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
 
 ---
 
-## API Endpoints
+## Prediction Endpoints
 
-### `GET /health`
+### `POST /predict/basic` — KNN model, full input
 
-Health check for container orchestration and load balancer probes.
-
-**Response:**
-
-```json
-{ "status": "healthy", "model_loaded": true }
-```
-
-### `POST /predict`
-
-Predict the sale price of a property. Accepts 18 property columns as JSON. The API joins demographic data on `zipcode` automatically — clients never send demographics.
-
-**Request body (all fields required):**
-
-| Field            | Type    | Description                        |
-| ---------------- | ------- | ---------------------------------- |
-| `bedrooms`       | int     | Number of bedrooms                 |
-| `bathrooms`      | float   | Number of bathrooms                |
-| `sqft_living`    | int     | Living area in sq ft               |
-| `sqft_lot`       | int     | Lot size in sq ft                  |
-| `floors`         | float   | Number of floors                   |
-| `waterfront`     | int     | Waterfront property (0 or 1)       |
-| `view`           | int     | View rating (0–4)                  |
-| `condition`      | int     | Condition rating (1–5)             |
-| `grade`          | int     | Building grade (1–13)              |
-| `sqft_above`     | int     | Above-ground sq ft                 |
-| `sqft_basement`  | int     | Basement sq ft                     |
-| `yr_built`       | int     | Year built                         |
-| `yr_renovated`   | int     | Year renovated (0 if never)        |
-| `zipcode`        | string  | 5-digit zipcode (must exist in demographics data) |
-| `lat`            | float   | Latitude                           |
-| `long`           | float   | Longitude                          |
-| `sqft_living15`  | int     | Living area of nearest 15 neighbors |
-| `sqft_lot15`     | int     | Lot size of nearest 15 neighbors   |
-
-**Response:**
-
-| Field             | Type           | Description                                  |
-| ----------------- | -------------- | -------------------------------------------- |
-| `predicted_price` | float          | Estimated sale price in USD                   |
-| `model_version`   | string         | Semantic version of the deployed model        |
-| `provider`        | string         | Branding identifier ("Sound Realty AI")       |
-| `warning`         | string or null | Note if prediction may be unreliable          |
-
-**Error responses:**
-
-- `422` — Invalid input (missing fields, wrong types, or unknown zipcode)
-
----
-
-## Testing the API
-
-### Option 1: Test Script
+Accepts all 18 property columns from `future_unseen_examples.csv`. Uses the original KNN model (same as baseline-api). The API joins demographic data on `zipcode` automatically.
 
 ```sh
-python test_api.py
-```
-
-Sends 5 sample properties from `data/future_unseen_examples.csv` plus an edge case (invalid zipcode). Pass `--url` to target a different host:
-
-```sh
-python test_api.py --url http://my-server:8000
-```
-
-### Option 2: cURL
-
-```sh
-curl -X POST http://localhost:8000/predict \
+curl -X POST http://localhost:8000/predict/basic \
   -H "Content-Type: application/json" \
   -d '{
-    "bedrooms": 4,
-    "bathrooms": 1.0,
-    "sqft_living": 1680,
-    "sqft_lot": 5043,
-    "floors": 1.5,
-    "waterfront": 0,
-    "view": 0,
-    "condition": 4,
-    "grade": 6,
-    "sqft_above": 1680,
-    "sqft_basement": 0,
-    "yr_built": 1911,
-    "yr_renovated": 0,
-    "zipcode": "98118",
-    "lat": 47.5354,
-    "long": -122.273,
-    "sqft_living15": 1560,
-    "sqft_lot15": 5765
+    "bedrooms": 4, "bathrooms": 1.0, "sqft_living": 1680,
+    "sqft_lot": 5043, "floors": 1.5, "waterfront": 0, "view": 0,
+    "condition": 4, "grade": 6, "sqft_above": 1680,
+    "sqft_basement": 0, "yr_built": 1911, "yr_renovated": 0,
+    "zipcode": "98118", "lat": 47.5354, "long": -122.273,
+    "sqft_living15": 1560, "sqft_lot15": 5765
   }'
 ```
 
-### Option 3: Postman
+### `POST /predict/minimal` — KNN model, minimal input (bonus)
 
-#### Setting Up
+Only the 8 columns the KNN model actually needs. Same model as `/predict/basic`, fewer required fields.
 
-1. Open Postman and create a new **Collection** called `Sound Realty API`
-2. Add requests as described below
-
-#### Health Check Request
-
-- **Method:** `GET`
-- **URL:** `http://localhost:8000/health`
-- Click **Send** — you should see `{ "status": "healthy", "model_loaded": true }`
-
-#### Predict Request
-
-1. Create a new request in the collection
-2. **Method:** `POST`
-3. **URL:** `http://localhost:8000/predict`
-4. Go to the **Headers** tab and add:
-   - Key: `Content-Type` — Value: `application/json`
-5. Go to the **Body** tab, select **raw** and **JSON**, then paste:
-
-```json
-{
-  "bedrooms": 4,
-  "bathrooms": 1.0,
-  "sqft_living": 1680,
-  "sqft_lot": 5043,
-  "floors": 1.5,
-  "waterfront": 0,
-  "view": 0,
-  "condition": 4,
-  "grade": 6,
-  "sqft_above": 1680,
-  "sqft_basement": 0,
-  "yr_built": 1911,
-  "yr_renovated": 0,
-  "zipcode": "98118",
-  "lat": 47.5354,
-  "long": -122.273,
-  "sqft_living15": 1560,
-  "sqft_lot15": 5765
-}
+```sh
+curl -X POST http://localhost:8000/predict/minimal \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bedrooms": 4, "bathrooms": 1.0, "sqft_living": 1680,
+    "sqft_lot": 5043, "floors": 1.5, "sqft_above": 1680,
+    "sqft_basement": 0, "zipcode": "98118"
+  }'
 ```
 
-6. Click **Send**
+### `POST /predict/enhanced` — LightGBM + demographics
 
-**Expected response:**
+Uses 10 best features + demographics joined on zipcode. Highest feature count but depends on external demographics data.
+
+```sh
+curl -X POST http://localhost:8000/predict/enhanced \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sqft_living": 1680, "sqft_lot": 5043, "sqft_above": 1680,
+    "sqft_basement": 0, "grade": 6, "lat": 47.5354,
+    "long": -122.273, "bathrooms": 1.0, "waterfront": 0,
+    "zipcode": "98118"
+  }'
+```
+
+### `POST /predict/optimized` — LightGBM, no demographics
+
+Best cost-benefit model: uses only 10 house features (no demographics join), yet achieves comparable accuracy. No external data dependency.
+
+```sh
+curl -X POST http://localhost:8000/predict/optimized \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sqft_living": 1680, "sqft_lot": 5043, "sqft_above": 1680,
+    "sqft_basement": 0, "grade": 6, "lat": 47.5354,
+    "long": -122.273, "bathrooms": 1.0, "waterfront": 0,
+    "zipcode": "98118"
+  }'
+```
+
+### Response format (all four endpoints)
 
 ```json
 {
-  "predicted_price": 386800.0,
-  "model_version": "1.0.0",
+  "predicted_price": 351694.46,
+  "model_type": "LightGBM (optimized)",
+  "model_version": "2.0.0",
   "provider": "Sound Realty AI",
   "warning": null
 }
 ```
 
-#### Testing Edge Cases in Postman
+| Field             | Type           | Description                             |
+| ----------------- | -------------- | --------------------------------------- |
+| `predicted_price` | float          | Estimated sale price in USD             |
+| `model_type`      | string         | Which model served this prediction      |
+| `model_version`   | string         | Version of the deployed model           |
+| `provider`        | string         | Branding identifier                     |
+| `warning`         | string or null | Note if prediction may be unreliable    |
 
-- **Invalid zipcode:** Change `"zipcode"` to `"00000"` — should return `422`
-- **Missing field:** Remove any field from the body — should return `422`
-- **Different properties:** Use values from `data/future_unseen_examples.csv` to test various homes
-
-#### Valid Zipcodes for Testing
-
-Some zipcodes present in the demographics data: `98001`, `98002`, `98003`, `98004`, `98005`, `98006`, `98007`, `98008`, `98010`, `98011`, `98014`, `98019`, `98022`, `98023`, `98024`, `98027`, `98028`, `98029`, `98030`, `98031`, `98032`, `98033`, `98034`, `98038`, `98039`, `98040`, `98042`, `98045`, `98052`, `98053`, `98055`, `98056`, `98058`, `98059`, `98065`, `98070`, `98072`, `98074`, `98075`, `98077`, `98092`, `98102`, `98103`, `98105`, `98106`, `98107`, `98108`, `98109`, `98112`, `98115`, `98116`, `98117`, `98118`, `98119`, `98122`, `98125`, `98126`, `98133`, `98136`, `98144`, `98146`, `98148`, `98155`, `98166`, `98168`, `98177`, `98178`, `98188`, `98198`, `98199`.
-
-### Option 4: Interactive Docs (Swagger UI)
-
-FastAPI auto-generates interactive docs at `http://localhost:8000/docs`. You can test endpoints directly from the browser.
+**Error:** `422` — Invalid input (missing fields, wrong types, or unknown zipcode)
 
 ---
 
 ## Monitoring Dashboard
 
-The API includes a built-in monitoring dashboard at `http://localhost:8000/dashboard`.
+`http://localhost:8000/dashboard`
 
-### Features
-
-- **Real-time metrics** — request count, error rate, average latency, and P95 latency
-- **Live charts** — latency and request volume over time (Chart.js)
-- **Stress test panel** — fire concurrent prediction requests using real data from `future_unseen_examples.csv` and watch metrics update live
-
-### Endpoints
+- Real-time metrics: request count, error rate, average latency
+- Live charts: latency timeline, status codes, price distribution, endpoint breakdown
+- Stress test panel: fire requests from `future_unseen_examples.csv` and watch metrics update
 
 | Endpoint | Description |
 | --- | --- |
 | `GET /dashboard` | Interactive monitoring UI |
-| `GET /metrics` | Raw metrics as JSON (for programmatic consumption) |
-| `GET /test-data` | Returns unseen example rows as JSON (used by the stress test panel) |
+| `GET /metrics` | Raw metrics as JSON |
+| `GET /test-data` | Unseen examples as JSON (used by stress test panel) |
 
-### Metrics JSON
+---
 
-`GET /metrics` returns a snapshot like:
+## Retraining Module
 
-```json
-{
-  "total_requests": 142,
-  "total_errors": 1,
-  "error_rate": 0.007,
-  "avg_latency_ms": 12.4,
-  "p95_latency_ms": 28.1
-}
+`http://localhost:8000/retrain`
+
+A dashboard for retraining the optimized (LightGBM) model with new data, without restarting the service.
+
+### How it works
+
+1. **Upload a CSV** with columns: `date`, `price`, `zipcode`, and the 10 optimized feature columns
+2. **Choose the train/test split ratio** — the split is always chronological (earlier dates = train, later dates = test)
+3. **Optionally enable auto-deploy** — if the candidate model beats the current one (by R²), it hot-swaps in memory
+4. **Compare results** — side-by-side metrics (R², MAE, MAPE, RMSE) for current vs. candidate
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /retrain` | Retraining dashboard UI |
+| `POST /retrain/run` | Run retraining (multipart form: `file`, `train_ratio`, `auto_deploy`) |
+| `GET /retrain/history` | History of all retraining attempts |
+
+### Testing retraining with existing data
+
+```sh
+curl -X POST http://localhost:8000/retrain/run \
+  -F "file=@data/kc_house_data.csv" \
+  -F "train_ratio=0.8" \
+  -F "auto_deploy=false"
 ```
 
-> **Note:** Metrics are held in-memory and reset on restart. The `/dashboard`, `/metrics`, `/docs`, and `/test-data` routes are excluded from metric tracking.
+---
+
+## Other Endpoints
+
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/health` | GET | Health check — reports model load status and version |
+| `/docs` | GET | Interactive Swagger UI (auto-generated by FastAPI) |
+
+---
+
+## Testing the API
+
+```sh
+python test_api.py
+```
+
+Sends sample properties to all four endpoints plus edge cases. Use `--url` for a different host:
+
+```sh
+python test_api.py --url http://my-server:8000
+```
 
 ---
 
@@ -265,30 +205,32 @@ The API includes a built-in monitoring dashboard at `http://localhost:8000/dashb
 ```
 .
 ├── app/
-│   ├── main.py              # FastAPI application
+│   ├── main.py              # FastAPI application (4 endpoints + retraining)
 │   ├── metrics.py           # In-memory metrics store & middleware
 │   └── templates/
-│       └── dashboard.html   # Monitoring dashboard UI
+│       ├── dashboard.html   # Monitoring dashboard UI
+│       └── retrain.html     # Retraining dashboard UI
 ├── data/
-│   ├── kc_house_data.csv     # Training data (21,613 home sales)
-│   ├── zipcode_demographics.csv  # US Census demographics per zipcode
-│   └── future_unseen_examples.csv # Unseen homes for prediction
+│   ├── kc_house_data.csv
+│   ├── zipcode_demographics.csv
+│   └── future_unseen_examples.csv
 ├── model/
-│   ├── model.pkl             # Trained model (generated)
-│   └── model_features.json   # Feature order (generated)
-├── notebook/
-│   ├── explore_data.ipynb    # EDA notebook
-│   └── create_model.ipynb    # Model training notebook
-├── create_model.py           # Model training script
-├── test_api.py               # API test script
-├── Dockerfile                # Container definition
-├── requirements.txt          # Python dependencies
-└── conda_environment.yml     # Conda environment
+│   ├── basic_model.pkl            # KNN model (generated)
+│   ├── basic_model_features.json
+│   ├── enhanced_model.pkl         # LightGBM + demographics (generated)
+│   ├── enhanced_model_features.json
+│   ├── optimized_model.pkl        # LightGBM, no demographics (generated)
+│   └── optimized_model_features.json
+├── create_model.py           # Trains all three models
+├── test_api.py               # API test script (tests all 4 endpoints)
+├── Dockerfile
+├── requirements.txt
+└── conda_environment.yml
 ```
 
 ## Architecture
 
-- **Framework:** FastAPI with uvicorn
-- **Model:** `RobustScaler` + `KNeighborsRegressor` pipeline (scikit-learn)
-- **Container:** Docker with non-root user, single exposed port (8000)
-- **Data pipeline:** 7 house features + demographic join on zipcode = 33 model features
+- **Framework:** FastAPI + uvicorn
+- **Models:** KNN (baseline) + LightGBM (enhanced, with demographics) + LightGBM (optimized, no demographics)
+- **Container:** Docker with non-root user, port 8000
+- **Retraining:** Chronological split, compare-and-swap, zero-downtime model updates

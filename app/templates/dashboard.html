@@ -104,7 +104,12 @@
   .stress-controls button:hover { opacity: 0.85; }
   .btn-start { background: #238636; color: #fff; }
   .btn-stop { background: #da3633; color: #fff; }
+  .btn-reset { background: #30363d; color: #e1e4e8; }
   .btn-start:disabled, .btn-stop:disabled { opacity: 0.4; cursor: not-allowed; }
+  .header-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .header-links { font-size: 0.8rem; margin-left: auto; }
+  .header-links a { color: #58a6ff; text-decoration: none; }
+  .header-links a:hover { text-decoration: underline; }
   .progress-bar {
     height: 6px;
     background: #21262d;
@@ -124,8 +129,16 @@
 </head>
 <body>
 
-<h1>Sound Realty API — Monitoring</h1>
-<p class="subtitle">Auto-refreshes every 3 seconds &bull; <span id="last-update">—</span></p>
+<div class="header-row">
+  <div>
+    <h1>Sound Realty — Monitoring</h1>
+    <p class="subtitle">Auto-refreshes every 3 seconds &bull; <span id="last-update">—</span></p>
+  </div>
+  <div class="header-links">
+    <a href="/docs" target="_blank">Swagger Docs</a> &bull;
+    <a href="/retrain">Retraining</a>
+  </div>
+</div>
 
 <div class="cards">
   <div class="card">
@@ -163,11 +176,25 @@
     <h3>Requests by Endpoint</h3>
     <canvas id="endpoint-chart"></canvas>
   </div>
+  <div class="chart-box">
+    <h3>Avg Latency by Endpoint (ms)</h3>
+    <canvas id="latency-endpoint-chart"></canvas>
+  </div>
 </div>
 
 <div class="stress-box">
   <h3>Stress Test — future_unseen_examples.csv (100 rows)</h3>
   <div class="stress-controls">
+    <label>
+      Endpoint
+      <select id="st-endpoint">
+        <option value="all">All endpoints (round-robin)</option>
+        <option value="/predict/basic">basic (KNN, 18 inputs)</option>
+        <option value="/predict/minimal">minimal (KNN, 8 inputs)</option>
+        <option value="/predict/enhanced">enhanced (LightGBM + demographics)</option>
+        <option value="/predict/optimized" selected>optimized (LightGBM, 10 inputs)</option>
+      </select>
+    </label>
     <label>
       Iterations
       <input type="number" id="st-iterations" value="1" min="1" max="100">
@@ -183,6 +210,7 @@
     </label>
     <button class="btn-start" id="st-start" onclick="startStressTest()">Start</button>
     <button class="btn-stop" id="st-stop" onclick="stopStressTest()" disabled>Stop</button>
+    <button class="btn-reset" onclick="resetMetrics()">Reset Metrics</button>
   </div>
   <div class="progress-bar"><div class="fill" id="st-progress"></div></div>
   <div class="stress-status" id="st-status">Ready — configure and click Start</div>
@@ -257,6 +285,17 @@ const endpointChart = makeChart('endpoint-chart', 'bar', {
   indexAxis: 'y',
   scales: {
     x: { ticks: { color: '#484f58', font: { size: 10 } }, grid: { color: '#21262d' } },
+    y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } }
+  }
+});
+
+const latencyEndpointChart = makeChart('latency-endpoint-chart', 'bar', {
+  labels: [],
+  datasets: [{ data: [], backgroundColor: COLORS.orange }]
+}, {
+  indexAxis: 'y',
+  scales: {
+    x: { ticks: { color: '#484f58', font: { size: 10 } }, grid: { color: '#21262d' }, title: { display: true, text: 'ms', color: '#484f58' } },
     y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { display: false } }
   }
 });
@@ -347,6 +386,12 @@ async function refresh() {
     endpointChart.data.datasets[0].data = Object.values(epCounts);
     endpointChart.update('none');
 
+    // Avg latency by endpoint chart
+    const epLatency = d.endpoint_avg_latency || {};
+    latencyEndpointChart.data.labels = Object.keys(epLatency);
+    latencyEndpointChart.data.datasets[0].data = Object.values(epLatency);
+    latencyEndpointChart.update('none');
+
     // Table (most recent first)
     const tbody = document.getElementById('req-table');
     if (recent.length === 0) {
@@ -393,8 +438,13 @@ async function startStressTest() {
   stopBtn.disabled = false;
   progressEl.style.width = '0%';
 
+  const endpointVal = document.getElementById('st-endpoint').value;
   const iterations = parseInt(document.getElementById('st-iterations').value) || 1;
   const delay = parseInt(document.getElementById('st-delay').value) || 0;
+
+  const minimalCols = ['bedrooms','bathrooms','sqft_living','sqft_lot','floors','sqft_above','sqft_basement','zipcode'];
+  const enhancedCols = ['sqft_living','sqft_lot','sqft_above','sqft_basement','grade','lat','long','bathrooms','waterfront','zipcode'];
+  const allEndpoints = ['/predict/basic', '/predict/minimal', '/predict/enhanced', '/predict/optimized'];
 
   statusEl.textContent = 'Loading test data...';
 
@@ -426,10 +476,19 @@ async function startStressTest() {
 
       const t0 = performance.now();
       try {
-        const r = await fetch('/predict', {
+        const endpoint = endpointVal === 'all'
+          ? allEndpoints[(iter * examples.length + i) % allEndpoints.length]
+          : endpointVal;
+        let payload = examples[i];
+        if (endpoint === '/predict/minimal') {
+          payload = Object.fromEntries(minimalCols.map(c => [c, examples[i][c]]));
+        } else if (endpoint === '/predict/enhanced' || endpoint === '/predict/optimized') {
+          payload = Object.fromEntries(enhancedCols.map(c => [c, examples[i][c]]));
+        }
+        const r = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(examples[i])
+          body: JSON.stringify(payload)
         });
         if (!r.ok) errors++;
       } catch (e) {
@@ -462,6 +521,11 @@ async function startStressTest() {
 
 function stopStressTest() {
   stressAbort = true;
+}
+
+async function resetMetrics() {
+  await fetch('/metrics/reset', { method: 'POST' });
+  refresh();
 }
 </script>
 </body>
