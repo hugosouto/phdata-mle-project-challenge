@@ -1,83 +1,166 @@
 # PLAN.md
 
-BMAD workflow plan for the phData MLE Project Challenge.
+phData MLE Project Challenge — Sound Realty housing price prediction.
 
-## Phase 1 — Analysis
+## Branches
 
-### 1. Brainstorm Project (BP) — `/bmad-brainstorming`
-- **Purpose:** Expert-guided ideation to explore solution approaches
-- **Status:** done
-- **Output:** `_bmad-output/brainstorming/brainstorming-session-2026-03-08-0200.md`
-- **Key decisions:**
-  - Two-tier strategy: simple baseline FIRST, wow factor in presentation only
-  - API code just needs to work cleanly (FastAPI + Docker)
-  - Wow factor lives in presentation and system thinking (Hugo's strength)
-  - Chatbot vision = 30-second teaser slide, not a deliverable
-  - Minimum delivery via BMAD quick spec + quick dev
+| Branch | Purpose | Status |
+|---|---|---|
+| `main` | Clean repo for GitHub submission | active |
+| `baseline-api` | Frozen simple FastAPI + KNN + dashboard | frozen |
+| `enhanced-api` | 4 endpoints, LightGBM, monitoring, retraining | frozen |
+| `data-analysis` | Notebooks, RAI analysis, context docs | active |
 
-### 2. Domain & Enrichment Research (DR) — Claude Max Deep Research
-- **Purpose:** Seattle housing market domain knowledge + open data enrichment sources
-- **Status:** done
-- **Output:**
-  - `_bmad-output/brainstorming/research-results/Prompt 1 - Seattle Housing Market Domain Research.md`
-  - `_bmad-output/brainstorming/research-results/Prompt 2 - Open Data Enrichment Sources for King County Housing Model.md`
+Worktrees at `worktrees/{branch-name}/` (gitignored).
 
-### ~~3. Technical Research~~ — SKIPPED
-### ~~4. Create Brief~~ — SKIPPED
-### ~~5. Create PRD~~ — SKIPPED
-_Brainstorming covered strategic decisions. Full BMAD planning workflow is overkill for this project. Going straight to quick spec + quick dev._
+---
 
-## Phase 2 — Build (Quick Path)
+## Deliverable 1 — REST API + Docker (Required)
 
-### 3. Quick Spec (QS) — `/bmad-bmm-quick-spec`
-- **Purpose:** Implementation-ready spec for minimum viable delivery
-- **Status:** done
-- **Output:** `_bmad-output/implementation-artifacts/tech-spec-sound-realty-api.md`
-- **Scope:** FastAPI + Docker + test script (6 tasks, 8 ACs, 6 files)
-- **Reviews completed:**
-  - Party Mode: 4 improvements (path resolution, fail-fast startup, zipcode dtype, edge case test)
-  - Adversarial Review: 13 findings, 7 fixes applied (NaN flow, negative price guard, test assertions, requests out of prod, logging, non-root Docker, security notes)
+> Deploy the model as a RESTful service, JSON POST, return prediction + metadata.
 
-### 4. Quick Dev (QD) — `/bmad-bmm-quick-dev`
-- **Purpose:** Implement the quick spec
-- **Status:** done
-- **Output:** 6 files created (`requirements.txt`, `app/__init__.py`, `app/main.py`, `Dockerfile`, `.dockerignore`, `test_api.py`)
-- **Test results:** 7/7 checks passed (health, 5 predictions, edge case)
-- **ACs verified:** 7/8 (AC 7 Docker build pending manual verification)
-- **Note:** Fixed `str | None` → `Optional[str]` for Python 3.9 compatibility
+| Requirement | Status | Branch |
+|---|---|---|
+| Endpoint accepting `future_unseen_examples.csv` columns | done | baseline-api, enhanced-api |
+| Return JSON with prediction + metadata | done | both (enhanced adds R², MAE, MAPE, RMSE, n_features, uses_demographics) |
+| Backend join of `zipcode_demographics.csv` | done | both |
+| Docker containerized | done | both |
+| Discuss autoscaling (presentation only) | pending | presentation |
+| Zero-downtime model updates | done | enhanced-api (hot-swap retraining) |
+| Bonus: minimal-features endpoint | done | both |
 
-## Phase 3 — Core Deliverables (Model)
+**What exists:**
+- `baseline-api`: 2 endpoints (full + minimal), KNN only, monitoring dashboard
+- `enhanced-api`: 4 endpoints (basic, minimal, enhanced, optimized), 3 models (KNN + 2 LightGBM), monitoring dashboard, retraining module, stress testing
 
-### 5. Model Evaluation
-- **Purpose:** Assess generalization, overfitting/underfitting of the provided KNN baseline
-- **Status:** pending
-- **Deliverable:** Evaluation notebook/script with metrics (R², RMSE, MAE), learning curves, residual analysis
-- **Key questions:** Does the model generalize? Is it overfitting (KNN with k=5 on 21K rows)? Where does it fail?
+---
 
-### 6. Model Improvement
-- **Purpose:** Apply basic ML principles to improve on the baseline (not a Kaggle competition — 80% solution)
-- **Status:** pending
-- **Approach:** Traditional ML — feature engineering, algorithm selection, hyperparameter tuning
-- **Candidates:** Add ignored features (grade, waterfront, yr_built, lat/long), try Ridge/Lasso/RandomForest/GradientBoosting, cross-validation
-- **Output:** Updated `model/model.pkl` + before/after comparison
+## Deliverable 2 — Test Script (Required)
 
-## Phase 4 — Wow Factor (If Time Allows)
+> Script that sends `future_unseen_examples.csv` to the endpoint.
 
-### 7. Wow factor enhancements (ranked by impact/effort)
-- [x] Bug discovery mention in presentation (0 min) — `create_model.py` line 14: `DEMOGRAPHICS_PATH` points to wrong file
-- [x] Sound Realty branding in API response (5 min) — `"provider": "Sound Realty AI"` in every response
-- [ ] Before/After model comparison visual (30 min)
-- [ ] SHAP waterfall for business storytelling (1-2 hrs)
-- [ ] Live API demo with curl in presentation (0 min)
-- [ ] Architecture diagram that grows (1 hr)
-- [ ] Interactive Price Map with Folium (1-2 hrs)
-- [ ] "What If" scenario re-prediction endpoint (2 hrs)
-- [ ] Chatbot teaser slide with market data (slides only)
-- [ ] EPA Smart Location Database enrichment (1-3 hrs)
+| Requirement | Status | Branch |
+|---|---|---|
+| Send examples, show predictions work | done | both |
+| baseline: `test_api.py` (7 checks) | done | baseline-api |
+| enhanced: `test_api.py` (16 checks, all 4 endpoints + edge cases) | done | enhanced-api |
 
-## Phase 5 — Presentation
+---
 
-### 8. Build presentation
-- **Status:** pending
-- **Format:** Business half (15 min) + Technical half (15 min)
-- **Key assets:** Domain research, model evaluation results, before/after metrics, SHAP plots, live demo, architecture diagram, chatbot teaser
+## Deliverable 3 — Model Evaluation (Required)
+
+> Evaluate how well the model generalizes. Overfitting? Underfitting?
+
+| Requirement | Status | Where |
+|---|---|---|
+| Baseline KNN evaluation (R², MAE, MAPE, RMSE) | done | enhanced-api `create_model.py` outputs metrics |
+| RAI / Responsible AI analysis notebook | done | data-analysis `analysis/rai_analysis_kc_house.ipynb` |
+| Overfitting/underfitting analysis | **pending** | needs notebook with learning curves, cross-validation |
+| Residual analysis | **pending** | needs residual plots, error by price range |
+| Feature importance / what's missing | **pending** | needs SHAP or feature importance analysis |
+
+**What's needed:** A proper model evaluation notebook that tells the story:
+1. Baseline KNN: what features it uses, what it ignores, R²=0.73
+2. Cross-validation to check overfitting (KNN k=5 on 21K rows)
+3. Residual plots — where does the model fail? (high-price homes, waterfront)
+4. Feature importance — which dropped features matter most (grade, waterfront, lat/long)
+
+---
+
+## Deliverable 4 — Model Improvement (Required)
+
+> Apply basic ML principles. Not Kaggle — explain your decisions.
+
+| Requirement | Status | Where |
+|---|---|---|
+| Improved model trained | done | enhanced-api `create_model.py` (LightGBM, R²=0.87) |
+| Before/after comparison | partially done | metrics exist, needs visual in notebook/presentation |
+| Feature engineering rationale | **pending** | needs documentation in notebook |
+| Explain decisions made | **pending** | presentation |
+
+**What's needed:** A notebook showing the improvement journey:
+1. Why LightGBM over KNN? (handles mixed features, no scaling needed, feature importance built-in)
+2. Which features added and why? (grade = biggest impact, waterfront, lat/long for spatial patterns)
+3. Before/after metrics comparison (R² 0.73 → 0.87, MAE $102K → $74K)
+4. Why NOT deeper tuning? (80% solution philosophy, diminishing returns)
+
+---
+
+## Deliverable 5 — Presentation (Required)
+
+> 15 min business + 15 min technical. Expect lots of Q&A.
+
+| Requirement | Status |
+|---|---|
+| Business half (non-technical audience) | **pending** |
+| Technical half (engineers/scientists) | **pending** |
+| Prepare for Q&A | **pending** |
+
+### Business Half (15 min) — "Pretend we're real estate professionals"
+- Problem: CMA takes 2-4 hours manually, ML does it in seconds
+- Demo: show API predicting prices (live curl or dashboard)
+- Value: consistency, speed, data-driven (21,613 transactions vs. gut feeling)
+- Feature impacts: SHAP waterfall showing dollar values per feature
+- Trust: explain what the model considers (grade, sqft, location, waterfront)
+- Sound Realty fit: how this plugs into their workflow
+
+### Technical Half (15 min) — "Now let's dig into the details"
+- API architecture: FastAPI + uvicorn + Docker
+- Model progression: KNN baseline → LightGBM (explain why, show metrics)
+- Scaling discussion: Azure (or AWS) — container orchestration, load balancer, autoscaling
+- Zero-downtime deployment: retraining module, hot-swap, versioning
+- Monitoring: dashboard, metrics middleware, latency tracking
+- MLOps awareness: model registry, CI/CD, feature stores, data drift detection
+- Bug found in provided code (`create_model.py` line 14)
+
+---
+
+## Remaining Work — Priority Order
+
+### P0: Must Have (core requirements not yet fulfilled)
+
+1. **Model evaluation notebook** — `data-analysis` branch
+   - Learning curves, cross-validation, residual analysis
+   - Feature importance (what baseline ignores)
+   - This IS a deliverable, not just presentation material
+
+2. **Model improvement notebook** — `data-analysis` branch
+   - Before/after comparison with charts
+   - Feature engineering rationale
+   - Decision explanations (why LightGBM, why these features)
+
+3. **Presentation deck** — can be Gamma, Google Slides, or similar
+   - Business half + Technical half
+   - SHAP waterfall plots for business storytelling
+
+### P1: Should Have (strong differentiators)
+
+4. **SHAP analysis** — feature importance with dollar impacts
+   - Business-friendly visualization
+   - Goes into both notebook and presentation
+
+5. **README cleanup on main** — what reviewers see on GitHub
+   - Clear project structure explanation
+   - How to run everything
+   - Which branch has what
+
+### P2: Nice to Have (wow factor)
+
+6. Before/after model comparison visual
+7. Architecture diagram (laptop → production scaling)
+8. Live API demo prep (curl commands ready)
+9. Interactive price map with Folium
+
+---
+
+## Context Files (data-analysis branch)
+
+| File | Purpose |
+|---|---|
+| `context/ML_Project_Challenge_Instructions.pdf` | Original assignment |
+| `context/ML_Project_Challenge_Prep_Video_Transcript.txt` | Andy's video guidance |
+| `context/Sound Realty Multifamily - Competitive intelligence and AI strategy.md` | Domain research |
+| `context/sound-realty-briefing-dashboard.html` | Client briefing |
+| `context/HugoSouto_AISolutionsArchitect_Presentation.html` | Hugo's portfolio reference |
+| `analysis/rai_analysis_kc_house.ipynb` | RAI analysis notebook |
+| `analysis/sweetviz_kc_house.html` | Sweetviz EDA report |
