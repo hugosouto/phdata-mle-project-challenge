@@ -1,0 +1,1 @@
+{"explanation_id": "20d7bf99-5189-4fb6-bb62-14f91f288841", "model_type": "regression", "data_type": "tabular", "model_task": "regression", "method": "mimic.lightgbm", "model_class": null, "is_raw": false, "is_engineered": false, "global": true, "local": true, "num_classes": 1, "num_examples": 1000, "num_features": 43, "is_local_sparse": false, "serialization_version": 1}
