@@ -133,7 +133,7 @@ curl -X POST http://localhost:8000/predict/optimized \
 
 ## Monitoring Dashboard
 
-`http://localhost:8000/dashboard`
+`http://localhost:8000/monitoring`
 
 - Real-time metrics: request count, error rate, average latency
 - Live charts: latency timeline, status codes, price distribution, endpoint breakdown
@@ -141,7 +141,7 @@ curl -X POST http://localhost:8000/predict/optimized \
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /dashboard` | Interactive monitoring UI |
+| `GET /monitoring` | Interactive monitoring UI |
 | `GET /metrics` | Raw metrics as JSON |
 | `GET /test-data` | Unseen examples as JSON (used by stress test panel) |
 
